@@ -2,7 +2,7 @@ services:
 
   worklex_persistencia:
     image: postgres:16
-    container_name: WorkLex_persistencia
+    container_name: worklex_persistencia
     restart: unless-stopped
     environment:
       POSTGRES_DB: SENA

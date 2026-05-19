@@ -95,8 +95,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'SENA',
+        'USER': 'admin',
+        'PASSWORD': 'Admin123*',
+        'HOST': 'worklex_persistencia',
+        'PORT': '5432',
     }
 }
 
