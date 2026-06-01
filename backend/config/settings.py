@@ -102,7 +102,7 @@ DATABASES = {
         'HOST': 'worklex_persistencia',
         'PORT': '5432',
         'OPTIONS': {
-            'options': '-c search_path=WorkLex,public'
+            'options': '-c search_path=worklex,public'
         }
     }
 }

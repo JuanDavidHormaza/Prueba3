@@ -33,7 +33,7 @@ class Person(models.Model):
         return f"{self.first_name} {self.last_name}"
  
     class Meta:
-        db_table = '"WorkLex"."PERSONS"'
+        db_table = '"worklex"."persons"'
  
  
 class User(models.Model):
@@ -63,7 +63,7 @@ class User(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
  
     class Meta:
-        db_table = '"WorkLex"."USERS"'
+        db_table = '"worklex"."users"'
  
  
 class RoleAccess(models.Model):
@@ -72,7 +72,7 @@ class RoleAccess(models.Model):
     status = models.CharField(max_length=50)
  
     class Meta:
-        db_table = '"WorkLex"."ROLES_ACCESS"'
+        db_table = '"worklex"."roles_access"'
         unique_together = ('role_id', 'link_id')
  
  
@@ -81,7 +81,7 @@ class Subject(models.Model):
     description = models.CharField(max_length=255)
  
     class Meta:
-        db_table = '"WorkLex"."SUBJECTS"'
+        db_table = '"worklex"."subjects"'
  
  
 class DigitalDictionary(models.Model):
@@ -95,18 +95,18 @@ class DigitalDictionary(models.Model):
     image = models.CharField(max_length=255)
  
     class Meta:
-        db_table = '"WorkLex"."DIGITAL_DICTIONARIES"'
+        db_table = '"worklex"."digital_dictionaries"'
         unique_together = ('word_id', 'subject')
  
  
-class Ranking(models.Model):
+class ranking(models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
     word_id = models.CharField(max_length=50)
     level = models.CharField(max_length=50)
     value = models.CharField(max_length=50)
  
     class Meta:
-        db_table = '"WorkLex"."RANKING"'
+        db_table = '"worklex"."ranking"'
         unique_together = ('subject', 'word_id')
  
  
@@ -121,7 +121,7 @@ class Post(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
  
     class Meta:
-        db_table = '"WorkLex"."POSTS"'
+        db_table = '"worklex"."posts"'
  
  
 class UserLog(models.Model):
@@ -130,7 +130,7 @@ class UserLog(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
  
     class Meta:
-        db_table = '"WorkLex"."USERS_LOGS"'
+        db_table = '"worklex"."users_logs"'
  
  
 class TestResult(models.Model):
@@ -155,7 +155,7 @@ class TestResult(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
  
     class Meta:
-        db_table = '"WorkLex"."TESTRESULTS"'
+        db_table = '"worklex"."testresults"'
         ordering = ['-created_at']
  
     def __str__(self):
