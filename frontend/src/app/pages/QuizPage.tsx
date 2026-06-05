@@ -154,14 +154,14 @@ export function QuizPage() {
 
   const getButtonStyle = (index: number) => {
     if (answerState === "idle") return `${answerColors[index].bg} ${answerColors[index].hover}`;
-    if (index === question.correctAnswer) return "bg-sena-green";
-    if (index === selectedAnswer && answerState === "incorrect") return "bg-destructive";
-    return "bg-muted-foreground/30";
+    if (index === question.correctAnswer) return "bg-green-500";
+    if (index === selectedAnswer && answerState === "incorrect") return "bg-red-500";
+    return "bg-gray-400";
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-sena-blue via-sena-blue-light to-sena-green flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-green-500 flex items-center justify-center">
         <div className="text-center text-white">
           <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4" />
           <p className="text-xl font-semibold">Cargando quiz...</p>
@@ -173,7 +173,7 @@ export function QuizPage() {
   if (!question) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sena-blue via-sena-blue-light to-sena-green relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-green-500 relative overflow-hidden">
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0YzAtMi4yMDkgMS43OTEtNCA0LTRzNCAxLjc5MSA0IDQtMS43OTEgNC00IDQtNC0xLjc5MS00LTR6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-50" />
 
       <div className="container mx-auto max-w-4xl px-4 py-6 relative">
@@ -216,7 +216,7 @@ export function QuizPage() {
             <span className="font-bold text-lg text-white">{score}</span>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-lg rounded-xl">
-            <Zap className="w-5 h-5 text-sena-green" />
+            <Zap className="w-5 h-5 text-green-400" />
             <span className="font-bold text-lg text-white">{userAnswers.filter(a => a.isCorrect).length}</span>
           </div>
         </div>
@@ -230,7 +230,6 @@ export function QuizPage() {
             transition={{ duration: 0.3 }}
             className="bg-white rounded-3xl shadow-2xl overflow-hidden">
 
-            {/* ✅ IMAGEN CORREGIDA - object-contain + bg-gray-50 */}
             <div className="relative bg-gray-50">
               <img
                 src={question.image}
@@ -242,7 +241,7 @@ export function QuizPage() {
               />
               <button
                 onClick={playAudio}
-                className="absolute bottom-4 right-4 w-12 h-12 bg-sena-blue text-white rounded-full flex items-center justify-center shadow-lg hover:opacity-90 transition-opacity"
+                className="absolute bottom-4 right-4 w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg hover:opacity-90 transition-opacity"
               >
                 <Volume2 className="w-6 h-6" />
               </button>
@@ -254,10 +253,10 @@ export function QuizPage() {
             {/* Pregunta */}
             <div className="px-6 lg:px-8 pt-5 pb-4">
               <h2 className="text-xl lg:text-2xl font-bold text-foreground text-center">
-                ¿Cuál es la palabra correcta para esta imagen?
+                {`¿Cual es la palabra correcta para esta imagen?`}
               </h2>
               <p className="text-center text-muted-foreground text-sm mt-1">
-                Escucha el audio y selecciona la opción correcta
+                Escucha el audio y selecciona la opcion correcta
               </p>
             </div>
 
@@ -289,12 +288,12 @@ export function QuizPage() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className={`px-6 py-5 text-center text-white ${answerState === "correct" ? "bg-sena-green" : "bg-destructive"}`}
+                  className={`px-6 py-5 text-center text-white ${answerState === "correct" ? "bg-green-500" : "bg-red-500"}`}
                 >
                   {answerState === "correct" ? (
                     <div className="flex items-center justify-center gap-3">
                       <Trophy className="w-6 h-6" />
-                      <span className="text-lg font-bold">¡Correcto! +1 punto</span>
+                      <span className="text-lg font-bold">Correcto! +1 punto</span>
                     </div>
                   ) : (
                     <div>
@@ -321,15 +320,15 @@ export function QuizPage() {
               <div className="w-16 h-16 bg-yellow-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <X className="w-8 h-8 text-yellow-500" />
               </div>
-              <h3 className="text-xl font-bold mb-2">¿Salir de la prueba?</h3>
-              <p className="text-muted-foreground mb-6">Perderás todo tu progreso actual.</p>
+              <h3 className="text-xl font-bold mb-2">Salir de la prueba?</h3>
+              <p className="text-muted-foreground mb-6">Perderas todo tu progreso actual.</p>
               <div className="flex gap-3">
                 <button onClick={() => setShowExitConfirm(false)}
-                  className="flex-1 py-3 bg-muted text-muted-foreground rounded-xl font-medium">
+                  className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors">
                   Continuar
                 </button>
                 <button onClick={() => navigate("/dashboard")}
-                  className="flex-1 py-3 bg-destructive text-white rounded-xl font-medium">
+                  className="flex-1 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors">
                   Salir
                 </button>
               </div>

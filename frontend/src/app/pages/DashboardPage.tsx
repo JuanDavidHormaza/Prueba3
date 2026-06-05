@@ -25,19 +25,16 @@ function calculateStreak(results: ApiTestResult[]): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  // Sort results by date descending
   const sortedResults = [...results].sort((a, b) => 
     new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
   );
   
-  // Get unique dates
   const uniqueDates = [...new Set(sortedResults.map(r => {
     const d = new Date(r.completedAt);
     d.setHours(0, 0, 0, 0);
     return d.getTime();
   }))].sort((a, b) => b - a);
   
-  // Calculate streak
   for (let i = 0; i < uniqueDates.length; i++) {
     const expectedDate = new Date(today);
     expectedDate.setDate(expectedDate.getDate() - i);
@@ -66,23 +63,18 @@ function calculateImprovement(results: ApiTestResult[]): number {
   return Math.max(0, recent - previous);
 }
 
-function getLevelInfo(level: string): { name: string; description: string; nextLevel: string; progressToNext: number } {
-  const levels: Record<string, { name: string; description: string; nextLevel: string; minScore: number; maxScore: number }> = {
-    'A1': { name: 'Principiante', description: 'Nivel basico inicial', nextLevel: 'A2', minScore: 0, maxScore: 20 },
-    'A2': { name: 'Elemental', description: 'Comunicacion basica', nextLevel: 'B1', minScore: 21, maxScore: 35 },
-    'B1': { name: 'Intermedio', description: 'Situaciones cotidianas', nextLevel: 'B2', minScore: 36, maxScore: 55 },
-    'B2': { name: 'Intermedio-Alto', description: 'Competente en situaciones cotidianas', nextLevel: 'C1', minScore: 56, maxScore: 75 },
-    'C1': { name: 'Avanzado', description: 'Dominio operativo eficaz', nextLevel: 'C2', minScore: 76, maxScore: 90 },
-    'C2': { name: 'Maestria', description: 'Dominio completo del idioma', nextLevel: 'C2', minScore: 91, maxScore: 100 },
+function getLevelInfo(level: string): { name: string; description: string; nextLevel: string } {
+  const levels: Record<string, { name: string; description: string; nextLevel: string }> = {
+    'A1': { name: 'Principiante', description: 'Nivel basico inicial', nextLevel: 'A2' },
+    'A2': { name: 'Elemental', description: 'Comunicacion basica', nextLevel: 'B1' },
+    'B1': { name: 'Intermedio', description: 'Situaciones cotidianas', nextLevel: 'B2' },
+    'B2': { name: 'Intermedio-Alto', description: 'Competente en situaciones cotidianas', nextLevel: 'C1' },
+    'C1': { name: 'Avanzado', description: 'Dominio operativo eficaz', nextLevel: 'C2' },
+    'C2': { name: 'Maestria', description: 'Dominio completo del idioma', nextLevel: 'C2' },
+    'N/A': { name: 'Sin evaluar', description: 'Realiza una prueba para conocer tu nivel', nextLevel: 'A1' },
   };
   
-  const info = levels[level] || levels['A1'];
-  return {
-    name: info.name,
-    description: info.description,
-    nextLevel: info.nextLevel,
-    progressToNext: level === 'C2' ? 100 : 72, // This would be calculated based on actual scores
-  };
+  return levels[level] || levels['N/A'];
 }
 
 export function DashboardPage() {
@@ -94,7 +86,6 @@ export function DashboardPage() {
   const userProgram = localStorage.getItem("userProgram") || "Desarrollo de Software";
   const userId = localStorage.getItem("userId");
 
-  // Fetch test results from API
   useEffect(() => {
     const fetchTestResults = async () => {
       if (!userId) {
@@ -115,7 +106,6 @@ export function DashboardPage() {
     fetchTestResults();
   }, [userId]);
 
-  // Calculate stats from real data
   const stats = {
     testsCompleted: testResults.length,
     averageScore: testResults.length > 0 
@@ -126,10 +116,8 @@ export function DashboardPage() {
     improvement: calculateImprovement(testResults),
   };
 
-  // Get level info
   const levelInfo = getLevelInfo(stats.currentLevel);
 
-  // Get recent tests (sorted by date, most recent first)
   const recentTests = testResults.slice(0, 3).map(result => ({
     id: result.id,
     date: formatDate(result.completedAt),
@@ -140,7 +128,6 @@ export function DashboardPage() {
     totalQuestions: result.totalQuestions,
   }));
 
-  // Get feedback from tests
   const feedbacks = testResults
     .filter(r => r.feedback)
     .slice(0, 2)
@@ -262,10 +249,10 @@ export function DashboardPage() {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
-            { label: "Pruebas Realizadas", value: stats.testsCompleted, icon: BarChart3, color: "sena-blue" },
-            { label: "Promedio", value: `${stats.averageScore}%`, icon: Target, color: "sena-green", trend: stats.improvement > 0 ? `+${stats.improvement}%` : null },
-            { label: "Nivel Actual", value: stats.currentLevel, icon: Trophy, color: "warning" },
-            { label: "Racha", value: `${stats.currentStreak} dias`, icon: Flame, color: "destructive" },
+            { label: "Pruebas Realizadas", value: stats.testsCompleted, icon: BarChart3, color: "bg-blue-500" },
+            { label: "Promedio", value: `${stats.averageScore}%`, icon: Target, color: "bg-green-500", trend: stats.improvement > 0 ? `+${stats.improvement}%` : null },
+            { label: "Nivel Actual", value: stats.currentLevel, icon: Trophy, color: "bg-yellow-500" },
+            { label: "Racha", value: `${stats.currentStreak} dias`, icon: Flame, color: "bg-orange-500" },
           ].map((stat, index) => (
             <motion.div
               key={index}
@@ -275,11 +262,11 @@ export function DashboardPage() {
               className="bg-white rounded-2xl p-5 border border-border shadow-sm"
             >
               <div className="flex items-start justify-between mb-3">
-                <div className={`w-11 h-11 bg-${stat.color}/10 rounded-xl flex items-center justify-center`}>
-                  <stat.icon className={`w-5 h-5 text-${stat.color}`} />
+                <div className={`w-11 h-11 ${stat.color} bg-opacity-10 rounded-xl flex items-center justify-center`}>
+                  <stat.icon className={`w-5 h-5 ${stat.color.replace('bg-', 'text-')}`} />
                 </div>
                 {stat.trend && (
-                  <span className="flex items-center gap-1 text-xs font-medium text-sena-green bg-sena-green/10 px-2 py-1 rounded-lg">
+                  <span className="flex items-center gap-1 text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-lg">
                     <TrendingUp className="w-3 h-3" />
                     {stat.trend}
                   </span>
@@ -300,7 +287,7 @@ export function DashboardPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="bg-gradient-to-br from-sena-green to-sena-green-dark rounded-2xl p-6 lg:p-8 text-white shadow-xl"
+              className="bg-gradient-to-br from-green-600 to-green-700 rounded-2xl p-6 lg:p-8 text-white shadow-xl"
             >
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                 <div>
@@ -319,7 +306,7 @@ export function DashboardPage() {
                 </div>
                 <motion.button
                   onClick={() => navigate("/quiz")}
-                  className="flex items-center justify-center gap-2 bg-white text-sena-green px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all whitespace-nowrap"
+                  className="flex items-center justify-center gap-2 bg-white text-green-600 px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all whitespace-nowrap"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -338,8 +325,8 @@ export function DashboardPage() {
             >
               <div className="flex items-center justify-between p-5 border-b border-border">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-sena-blue/10 rounded-xl flex items-center justify-center">
-                    <History className="w-5 h-5 text-sena-blue" />
+                  <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <History className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground">Historial de Pruebas</h3>
@@ -347,7 +334,7 @@ export function DashboardPage() {
                   </div>
                 </div>
                 {recentTests.length > 0 && (
-                  <button className="text-sm text-sena-green font-medium hover:text-sena-green-dark transition-colors flex items-center gap-1">
+                  <button className="text-sm text-green-600 font-medium hover:text-green-700 transition-colors flex items-center gap-1">
                     Ver todo
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -366,18 +353,18 @@ export function DashboardPage() {
                     >
                       <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg ${
-                          test.score >= 80 ? 'bg-sena-green/10 text-sena-green' :
-                          test.score >= 60 ? 'bg-warning/10 text-warning' :
-                          'bg-destructive/10 text-destructive'
+                          test.score >= 80 ? 'bg-green-100 text-green-600' :
+                          test.score >= 60 ? 'bg-yellow-100 text-yellow-600' :
+                          'bg-red-100 text-red-600'
                         }`}>
                           {test.score}%
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
                             <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                              test.level.startsWith('C') ? 'bg-sena-green/10 text-sena-green' :
-                              test.level.startsWith('B') ? 'bg-sena-blue/10 text-sena-blue' :
-                              'bg-warning/10 text-warning'
+                              test.level.startsWith('C') ? 'bg-green-100 text-green-600' :
+                              test.level.startsWith('B') ? 'bg-blue-100 text-blue-600' :
+                              'bg-yellow-100 text-yellow-600'
                             }`}>
                               {test.level}
                             </span>
@@ -418,8 +405,8 @@ export function DashboardPage() {
               className="bg-white rounded-2xl p-6 border border-border shadow-sm"
             >
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 bg-warning/10 rounded-xl flex items-center justify-center">
-                  <Award className="w-5 h-5 text-warning" />
+                <div className="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
+                  <Award className="w-5 h-5 text-yellow-600" />
                 </div>
                 <h3 className="font-semibold text-foreground">Tu Nivel Actual</h3>
               </div>
@@ -427,8 +414,8 @@ export function DashboardPage() {
               <div className="text-center py-6">
                 <div className={`w-24 h-24 mx-auto rounded-2xl flex items-center justify-center text-white text-4xl font-bold shadow-lg mb-4 ${
                   stats.currentLevel === 'N/A' 
-                    ? 'bg-muted text-muted-foreground shadow-none' 
-                    : 'bg-gradient-to-br from-sena-green to-sena-green-dark shadow-sena-green/30'
+                    ? 'bg-gray-300 text-gray-500 shadow-none' 
+                    : 'bg-gradient-to-br from-green-500 to-green-600 shadow-green-500/30'
                 }`}>
                   {stats.currentLevel}
                 </div>
@@ -443,7 +430,10 @@ export function DashboardPage() {
                     <span className="font-medium text-foreground">{stats.averageScore}%</span>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-sena-green rounded-full" style={{ width: `${Math.min(100, stats.averageScore)}%` }} />
+                    <div 
+                      className="h-full bg-green-500 rounded-full transition-all duration-500" 
+                      style={{ width: `${Math.min(100, stats.averageScore)}%` }} 
+                    />
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Continua practicando para alcanzar el nivel {levelInfo.nextLevel}
@@ -460,8 +450,8 @@ export function DashboardPage() {
               className="bg-white rounded-2xl p-6 border border-border shadow-sm"
             >
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 bg-sena-blue/10 rounded-xl flex items-center justify-center">
-                  <MessageSquare className="w-5 h-5 text-sena-blue" />
+                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <MessageSquare className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Retroalimentacion</h3>
@@ -474,7 +464,7 @@ export function DashboardPage() {
                   {feedbacks.map((feedback) => (
                     <div key={feedback.id} className="p-4 bg-muted/50 rounded-xl">
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 bg-sena-blue rounded-lg flex items-center justify-center text-white text-xs font-medium">
+                        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xs font-medium">
                           {feedback.teacher.charAt(0)}
                         </div>
                         <div>
