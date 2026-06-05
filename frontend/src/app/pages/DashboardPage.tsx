@@ -88,16 +88,21 @@ export function DashboardPage() {
 
   useEffect(() => {
     const fetchTestResults = async () => {
+      console.log("[v0] Dashboard - userId:", userId);
+      
       if (!userId) {
+        console.log("[v0] No userId found, skipping fetch");
         setLoading(false);
         return;
       }
       
       try {
+        console.log("[v0] Fetching test results for user:", userId);
         const results = await getTestResults(userId);
+        console.log("[v0] Test results received:", results);
         setTestResults(results);
       } catch (error) {
-        console.error("Error fetching test results:", error);
+        console.error("[v0] Error fetching test results:", error);
       } finally {
         setLoading(false);
       }

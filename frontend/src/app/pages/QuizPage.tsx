@@ -106,19 +106,25 @@ export function QuizPage() {
       setSelectedAnswer(null);
       setAnswerState("idle");
     } else {
-      const finalScore = Math.round((score / questions.length) * 100);
+      // Use score + 1 if the last answer was correct (since state hasn't updated yet)
+      const finalCorrect = answerState === "correct" ? score : score;
+      const finalScore = Math.round((finalCorrect / questions.length) * 100);
       const levelInfo = getLevelFromScore(finalScore);
       const userId = localStorage.getItem("userId");
       
+      console.log("[v0] Quiz finished - userId:", userId);
+      console.log("[v0] Final score:", finalScore, "Level:", levelInfo.level);
+      console.log("[v0] Correct answers:", finalCorrect, "Total:", questions.length);
+      
       // Save to localStorage for immediate use
       localStorage.setItem("quizScore", finalScore.toString());
-      localStorage.setItem("correctAnswers", score.toString());
+      localStorage.setItem("correctAnswers", finalCorrect.toString());
       localStorage.setItem("lastTestResult", JSON.stringify({
         id: Date.now().toString(),
         userId: userId,
         userName: localStorage.getItem("userName"),
         score: finalScore,
-        correctAnswers: score,
+        correctAnswers: finalCorrect,
         totalQuestions: questions.length,
         answers: userAnswers,
         completedAt: new Date().toISOString(),
@@ -126,19 +132,23 @@ export function QuizPage() {
 
       // Save to backend API
       if (userId) {
+        console.log("[v0] Attempting to save to backend API...");
         try {
-          await createTestResult({
+          const result = await createTestResult({
             userId: userId,
             score: finalScore,
             level: levelInfo.level,
-            correctAnswers: score,
+            correctAnswers: finalCorrect,
             totalQuestions: questions.length,
             duration: `${Math.floor((30 * questions.length - timeLeft) / 60)}:${String((30 * questions.length - timeLeft) % 60).padStart(2, '0')}`,
             answers: userAnswers,
           });
+          console.log("[v0] Test result saved successfully:", result);
         } catch (error) {
-          console.error("Error saving test result:", error);
+          console.error("[v0] Error saving test result:", error);
         }
+      } else {
+        console.log("[v0] No userId found - skipping API save");
       }
       
       navigate("/results");
