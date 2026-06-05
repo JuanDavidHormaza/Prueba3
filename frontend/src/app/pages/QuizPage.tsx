@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { Clock, Trophy, Zap, X, GraduationCap, Volume2 } from "lucide-react";
 import { createTestResult } from "../services/api";
 import { getLevelFromScore } from "../data/questions";
+import { useAuth } from "../context/AuthContext";
 
 interface Question {
   id: number;
@@ -30,6 +31,7 @@ interface UserAnswer {
 
 export function QuizPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -106,13 +108,13 @@ export function QuizPage() {
       setSelectedAnswer(null);
       setAnswerState("idle");
     } else {
-      // Use score + 1 if the last answer was correct (since state hasn't updated yet)
       const finalCorrect = answerState === "correct" ? score : score;
       const finalScore = Math.round((finalCorrect / questions.length) * 100);
       const levelInfo = getLevelFromScore(finalScore);
-      const userId = localStorage.getItem("userId");
+      const userId = user?.id || localStorage.getItem("userId");
       
       console.log("[v0] Quiz finished - userId:", userId);
+      console.log("[v0] User from context:", user);
       console.log("[v0] Final score:", finalScore, "Level:", levelInfo.level);
       console.log("[v0] Correct answers:", finalCorrect, "Total:", questions.length);
       
@@ -122,7 +124,7 @@ export function QuizPage() {
       localStorage.setItem("lastTestResult", JSON.stringify({
         id: Date.now().toString(),
         userId: userId,
-        userName: localStorage.getItem("userName"),
+        userName: user?.name || localStorage.getItem("userName"),
         score: finalScore,
         correctAnswers: finalCorrect,
         totalQuestions: questions.length,

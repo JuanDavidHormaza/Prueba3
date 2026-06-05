@@ -7,6 +7,7 @@ import {
   TrendingUp, Award, Calendar, Loader2
 } from "lucide-react";
 import { getTestResults, ApiTestResult } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 // Helper functions
 function formatDate(dateString: string): string {
@@ -79,16 +80,18 @@ function getLevelInfo(level: string): { name: string; description: string; nextL
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const [testResults, setTestResults] = useState<ApiTestResult[]>([]);
-  const userName = localStorage.getItem("userName") || "Usuario";
+  const userName = user?.name || localStorage.getItem("userName") || "Usuario";
   const userProgram = localStorage.getItem("userProgram") || "Desarrollo de Software";
-  const userId = localStorage.getItem("userId");
-
+  const userId = user?.id || localStorage.getItem("userId");
+  
   useEffect(() => {
     const fetchTestResults = async () => {
       console.log("[v0] Dashboard - userId:", userId);
+      console.log("[v0] Dashboard - user from context:", user);
       
       if (!userId) {
         console.log("[v0] No userId found, skipping fetch");
@@ -144,7 +147,7 @@ export function DashboardPage() {
     }));
 
   const handleLogout = () => {
-    localStorage.clear();
+    logout();
     navigate("/");
   };
 
