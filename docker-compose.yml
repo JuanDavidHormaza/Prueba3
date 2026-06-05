@@ -1,0 +1,48 @@
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: worklex_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${DJANGO_PORT}:8000"
+    volumes:
+      - ./backend:/app
+      - ./media:/app/media
+    working_dir: /app
+    command: >
+      sh -c "
+      chmod +x /app/wait-for-db.sh &&
+      /app/wait-for-db.sh &&
+      python manage.py migrate &&
+      python manage.py loaddata fixtures/mecanica.json &&
+      python manage.py runserver 0.0.0.0:8000
+      "
+    networks:
+      - worklex_network
+
+  frontend:
+    environment:
+    - VITE_API_URL=${VITE_API_URL}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: worklex_frontend
+    restart: unless-stopped
+    ports:
+      - "${VITE_PORT}:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    working_dir: /app
+    command: npm run dev -- --host 0.0.0.0
+    networks:
+      - worklex_network
+
+networks:
+  worklex_network:
+    external: true
