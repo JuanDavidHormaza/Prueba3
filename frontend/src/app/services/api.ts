@@ -340,6 +340,7 @@ export async function createTestResult(resultData: Omit<ApiTestResult, 'id' | 'u
       total_questions: resultData.totalQuestions,
       feedback: resultData.feedback,
       duration: resultData.duration,
+      answers: resultData.answers,
     }),
   });
   

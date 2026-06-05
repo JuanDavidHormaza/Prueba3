@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router";
 import { Clock, Trophy, Zap, X, GraduationCap, Volume2 } from "lucide-react";
+import { createTestResult } from "../services/api";
+import { getLevelFromScore } from "../data/questions";
 
 interface Question {
   id: number;
@@ -97,7 +99,7 @@ export function QuizPage() {
     setTimeout(() => handleNextQuestion(), 2000);
   };
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
     if (currentQuestion + 1 < questions.length) {
       setCurrentQuestion(q => q + 1);
       setTimeLeft(30);
@@ -105,11 +107,15 @@ export function QuizPage() {
       setAnswerState("idle");
     } else {
       const finalScore = Math.round((score / questions.length) * 100);
+      const levelInfo = getLevelFromScore(finalScore);
+      const userId = localStorage.getItem("userId");
+      
+      // Save to localStorage for immediate use
       localStorage.setItem("quizScore", finalScore.toString());
       localStorage.setItem("correctAnswers", score.toString());
       localStorage.setItem("lastTestResult", JSON.stringify({
         id: Date.now().toString(),
-        userId: localStorage.getItem("userId"),
+        userId: userId,
         userName: localStorage.getItem("userName"),
         score: finalScore,
         correctAnswers: score,
@@ -117,6 +123,24 @@ export function QuizPage() {
         answers: userAnswers,
         completedAt: new Date().toISOString(),
       }));
+
+      // Save to backend API
+      if (userId) {
+        try {
+          await createTestResult({
+            userId: userId,
+            score: finalScore,
+            level: levelInfo.level,
+            correctAnswers: score,
+            totalQuestions: questions.length,
+            duration: `${Math.floor((30 * questions.length - timeLeft) / 60)}:${String((30 * questions.length - timeLeft) % 60).padStart(2, '0')}`,
+            answers: userAnswers,
+          });
+        } catch (error) {
+          console.error("Error saving test result:", error);
+        }
+      }
+      
       navigate("/results");
     }
   };
