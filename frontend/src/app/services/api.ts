@@ -329,19 +329,26 @@ export async function getTestResults(userId?: string): Promise<ApiTestResult[]> 
 }
 
 export async function createTestResult(resultData: Omit<ApiTestResult, 'id' | 'userName' | 'completedAt'>): Promise<ApiTestResult> {
+  const payload = {
+    user: resultData.userId,
+    score: resultData.score,
+    level: resultData.level,
+    correct_answers: resultData.correctAnswers,
+    total_questions: resultData.totalQuestions,
+    feedback: resultData.feedback,
+    duration: resultData.duration,
+  };
+  
+  console.log("[v0] createTestResult - sending payload:", payload);
+  console.log("[v0] createTestResult - headers:", getAuthHeaders());
+  
   const response = await fetch(`${API_BASE}/results/`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({
-      user: resultData.userId,
-      score: resultData.score,
-      level: resultData.level,
-      correct_answers: resultData.correctAnswers,
-      total_questions: resultData.totalQuestions,
-      feedback: resultData.feedback,
-      duration: resultData.duration,
-    }),
+    body: JSON.stringify(payload),
   });
+  
+  console.log("[v0] createTestResult - response status:", response.status);
   
   return handleResponse<ApiTestResult>(response);
 }
