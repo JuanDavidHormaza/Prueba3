@@ -31,7 +31,7 @@ interface UserAnswer {
 
 export function QuizPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -112,11 +112,7 @@ export function QuizPage() {
       const finalScore = Math.round((finalCorrect / questions.length) * 100);
       const levelInfo = getLevelFromScore(finalScore);
       const userId = user?.id || localStorage.getItem("userId");
-      
-      console.log("[v0] Quiz finished - userId:", userId);
-      console.log("[v0] User from context:", user);
-      console.log("[v0] Final score:", finalScore, "Level:", levelInfo.level);
-      console.log("[v0] Correct answers:", finalCorrect, "Total:", questions.length);
+      const accessToken = localStorage.getItem("accessToken");
       
       // Save to localStorage for immediate use
       localStorage.setItem("quizScore", finalScore.toString());
@@ -132,11 +128,10 @@ export function QuizPage() {
         completedAt: new Date().toISOString(),
       }));
 
-      // Save to backend API
-      if (userId) {
-        console.log("[v0] Attempting to save to backend API...");
+      // Save to backend API - only if we have both userId and accessToken
+      if (userId && accessToken) {
         try {
-          const result = await createTestResult({
+          await createTestResult({
             userId: userId,
             score: finalScore,
             level: levelInfo.level,
@@ -145,12 +140,9 @@ export function QuizPage() {
             duration: `${Math.floor((30 * questions.length - timeLeft) / 60)}:${String((30 * questions.length - timeLeft) % 60).padStart(2, '0')}`,
             answers: userAnswers,
           });
-          console.log("[v0] Test result saved successfully:", result);
         } catch (error) {
           console.error("[v0] Error saving test result:", error);
         }
-      } else {
-        console.log("[v0] No userId found - skipping API save");
       }
       
       navigate("/results");

@@ -80,7 +80,7 @@ function getLevelInfo(level: string): { name: string; description: string; nextL
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading: authLoading } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const [testResults, setTestResults] = useState<ApiTestResult[]>([]);
@@ -89,20 +89,19 @@ export function DashboardPage() {
   const userId = user?.id || localStorage.getItem("userId");
   
   useEffect(() => {
+    // Esperar a que el AuthContext termine de verificar el token
+    if (authLoading) {
+      return;
+    }
+    
     const fetchTestResults = async () => {
-      console.log("[v0] Dashboard - userId:", userId);
-      console.log("[v0] Dashboard - user from context:", user);
-      
       if (!userId) {
-        console.log("[v0] No userId found, skipping fetch");
         setLoading(false);
         return;
       }
       
       try {
-        console.log("[v0] Fetching test results for user:", userId);
         const results = await getTestResults(userId);
-        console.log("[v0] Test results received:", results);
         setTestResults(results);
       } catch (error) {
         console.error("[v0] Error fetching test results:", error);
@@ -112,7 +111,7 @@ export function DashboardPage() {
     };
 
     fetchTestResults();
-  }, [userId]);
+  }, [userId, authLoading]);
 
   const stats = {
     testsCompleted: testResults.length,
@@ -151,7 +150,7 @@ export function DashboardPage() {
     navigate("/");
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
