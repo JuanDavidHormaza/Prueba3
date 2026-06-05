@@ -62,6 +62,17 @@ class User(models.Model):
     mfa = models.CharField(max_length=255)
  
     created_at = models.DateTimeField(default=timezone.now)
+    
+    # Propiedades requeridas por Django REST Framework para autenticacion
+    @property
+    def is_authenticated(self):
+        """Siempre retorna True para usuarios validos."""
+        return True
+    
+    @property
+    def is_anonymous(self):
+        """Siempre retorna False para usuarios validos."""
+        return False
  
     class Meta:
         db_table = '"worklex"."users"'
