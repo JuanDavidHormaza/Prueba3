@@ -94,14 +94,21 @@ export function DashboardPage() {
       return;
     }
     
+    const accessToken = localStorage.getItem('accessToken');
+    console.log("[v0] Dashboard useEffect - authLoading:", authLoading, "userId:", userId, "hasToken:", !!accessToken);
+    
     const fetchTestResults = async () => {
-      if (!userId) {
+      // No hacer fetch si no hay token o userId
+      if (!userId || !accessToken) {
+        console.log("[v0] Skipping fetch - missing userId or token");
         setLoading(false);
         return;
       }
       
       try {
+        console.log("[v0] Fetching test results...");
         const results = await getTestResults(userId);
+        console.log("[v0] Results received:", results);
         setTestResults(results);
       } catch (error) {
         console.error("[v0] Error fetching test results:", error);

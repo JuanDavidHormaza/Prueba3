@@ -31,6 +31,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('accessToken');
+      console.log("[v0] AuthContext checkAuth - token exists:", !!token);
       
       if (!token) {
         setIsLoading(false);
@@ -38,7 +39,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       try {
+        console.log("[v0] AuthContext - calling getMe()...");
         const userData = await getMe();
+        console.log("[v0] AuthContext - getMe success:", userData);
         setUser(userData);
         
         // Actualizar localStorage para compatibilidad con componentes existentes
@@ -47,9 +50,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         localStorage.setItem('userId', userData.id);
         localStorage.setItem('userPermissions', JSON.stringify(userData.permissions));
       } catch (error) {
+        console.log("[v0] AuthContext - getMe failed:", error);
         // Token invalido, limpiar storage
         localStorage.clear();
       } finally {
+        console.log("[v0] AuthContext - checkAuth complete, setting isLoading=false");
         setIsLoading(false);
       }
     };
