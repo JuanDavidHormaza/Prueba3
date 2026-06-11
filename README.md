@@ -24,41 +24,51 @@ cd worklex
 
 ---
 
-### 2. Crear la red compartida
+### 2. Crear el archivo de entorno
 
 ```bash
-docker network create worklex_network
+cp .env.example .env
 ```
 
 ---
 
-### 3. Levantar la base de datos
+### 3. Levantar todo el stack WorkLex
+
+Un solo comando levanta los 12 contenedores del stack (proxy, backend,
+frontend, worker, persistencia, cache, vault, media, auth, firewall,
+monitor y logs):
 
 ```bash
-docker-compose -p worklex_persistencia -f docker-compose.db.yml up -d
+docker compose up --build -d
 ```
+
+> La red `worklex_network` y los volúmenes se crean automáticamente.
 
 ---
 
-### 4. Levantar la aplicación
+## 🌐 Acceso a los servicios
 
-```bash
-docker-compose -p worklex_aplicacion up --build
-```
-
----
-
-## 🌐 Acceso a la aplicación
-
-* Frontend: http://localhost:5173
-* Backend: http://localhost:8000
+| Servicio              | Contenedor              | URL / Puerto                  |
+| --------------------- | ----------------------- | ----------------------------- |
+| Proxy (Nginx)         | `worklex_proxy`         | http://localhost (80 / 443)   |
+| Backend (Django)      | `worklex_backend`       | http://localhost:8000         |
+| Frontend (React+Vite) | `worklex_frontend`      | http://localhost:3000         |
+| PostgreSQL            | `worklex_persistencia`  | localhost:5432                |
+| Redis                 | `worklex_cache`         | localhost:6379                |
+| Vault                 | `worklex_vault`         | http://localhost:8200         |
+| MinIO (S3)            | `worklex_media`         | http://localhost:9001 (UI)    |
+| Keycloak (auth)       | `worklex_auth`          | http://localhost:8080         |
+| Firewall (WAF)        | `worklex_firewall`      | http://localhost:8081         |
+| Grafana               | `worklex_monitor`       | http://localhost:3001         |
+| Prometheus            | `worklex_prometheus`    | http://localhost:9090         |
+| Loki (logs)           | `worklex_logs`          | http://localhost:3100         |
 
 ---
 
 ## 🛑 Si algo falla
 
 ```bash
-docker-compose down
+docker compose down
 docker system prune -f
-docker-compose -p worklex_aplicacion up --build
+docker compose up --build
 ```

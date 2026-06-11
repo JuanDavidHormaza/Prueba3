@@ -1,46 +1,330 @@
+name: worklex
+
+# =====================================================================
+#  WorkLex Stack — docker-compose.yml
+#  12 servicios organizados como en el diagrama del stack:
+#
+#  Fila 1: proxy        backend       frontend      worker
+#  Fila 2: persistencia cache         vault         media
+#  Fila 3: auth         firewall      monitor       logs
+# =====================================================================
+
 services:
 
-  backend:
+  # ------------------------------------------------------------------
+  # worklex_proxy — Nginx (reverse proxy / TLS)
+  # ------------------------------------------------------------------
+  worklex_proxy:
+    image: nginx:alpine
+    container_name: worklex_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - worklex_backend
+      - worklex_frontend
+    networks:
+      - worklex_network
+
+  # ------------------------------------------------------------------
+  # worklex_backend — Django + Gunicorn (API)
+  # ------------------------------------------------------------------
+  worklex_backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: worklex/backend:latest
     container_name: worklex_backend
     restart: unless-stopped
     env_file:
       - .env
+    expose:
+      - "8000"
     ports:
-      - "${DJANGO_PORT}:8000"
+      - "${DJANGO_PORT:-8000}:8000"
     volumes:
       - ./backend:/app
       - ./media:/app/media
+      - worklex_backend_vol:/app/staticfiles
     working_dir: /app
     command: >
       sh -c "
       python manage.py migrate &&
       python manage.py loaddata fixtures/mecanica.json &&
-      python manage.py runserver 0.0.0.0:8000
+      gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --reload
       "
+    depends_on:
+      worklex_persistencia:
+        condition: service_healthy
+      worklex_cache:
+        condition: service_started
     networks:
       - worklex_network
 
-  frontend:
-    environment:
-    - VITE_API_URL=${VITE_API_URL}
+  # ------------------------------------------------------------------
+  # worklex_frontend — React + Vite
+  # ------------------------------------------------------------------
+  worklex_frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: worklex/frontend:latest
     container_name: worklex_frontend
     restart: unless-stopped
+    environment:
+      - VITE_API_URL=${VITE_API_URL}
+    expose:
+      - "5173"
     ports:
-      - "${VITE_PORT}:5173"
+      - "${VITE_PORT:-3000}:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
+      - worklex_frontend_vol:/app/dist
     working_dir: /app
-    command: npm run dev -- --host 0.0.0.0
+    command: npm run dev -- --host 0.0.0.0 --port 5173
     networks:
       - worklex_network
 
+  # ------------------------------------------------------------------
+  # worklex_worker — Celery Worker (tareas asíncronas, emails, notif.)
+  # Comparte la imagen del backend.
+  # ------------------------------------------------------------------
+  worklex_worker:
+    image: worklex/backend:latest
+    container_name: worklex_worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
+      - ./media:/app/media
+    working_dir: /app
+    command: >
+      sh -c "celery -A config worker --loglevel=info"
+    depends_on:
+      - worklex_backend
+      - worklex_cache
+    networks:
+      - worklex_network
+
+  # ------------------------------------------------------------------
+  # worklex_persistencia — PostgreSQL (DB SENA, schema worklex)
+  # ------------------------------------------------------------------
+  worklex_persistencia:
+    image: postgres:16-alpine
+    container_name: worklex_persistencia
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sena}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - worklex_db_vol:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-sena}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - worklex_network
+
+  # ------------------------------------------------------------------
+  # worklex_cache — Redis (cache, sessions, rate limit, broker Celery)
+  # ------------------------------------------------------------------
+  worklex_cache:
+    image: redis:7-alpine
+    container_name: worklex_cache
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: >
+      redis-server --appendonly yes
+    volumes:
+      - worklex_redis_vol:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - worklex_network
+
+  # ------------------------------------------------------------------
+  # worklex_vault — HashiCorp Vault (secrets, certs, PKI, KV store)
+  # ------------------------------------------------------------------
+  worklex_vault:
+    image: hashicorp/vault:1.17
+    container_name: worklex_vault
+    restart: unless-stopped
+    ports:
+      - "${VAULT_PORT:-8200}:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_ROOT_TOKEN:-worklex-root-token}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      VAULT_ADDR: http://0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+    command: server -dev
+    volumes:
+      - worklex_vault_vol:/vault/file
+    networks:
+      - worklex_network
+
+  # ------------------------------------------------------------------
+  # worklex_media — MinIO (almacenamiento S3 compatible: video/audio/img)
+  # ------------------------------------------------------------------
+  worklex_media:
+    image: minio/minio:latest
+    container_name: worklex_media
+    restart: unless-stopped
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-worklex}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-worklex123}
+    command: server /data --console-address ":9001"
+    volumes:
+      - worklex_media_vol:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - worklex_network
+
+  # ------------------------------------------------------------------
+  # worklex_auth — Keycloak (SSO, OAuth2, OIDC, roles)
+  # ------------------------------------------------------------------
+  worklex_auth:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: worklex_auth
+    restart: unless-stopped
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://worklex_persistencia:5432/${POSTGRES_DB:-sena}
+      KC_DB_USERNAME: ${POSTGRES_USER:-admin}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "${KEYCLOAK_PORT:-8080}:8080"
+    command: start-dev
+    depends_on:
+      worklex_persistencia:
+        condition: service_healthy
+    networks:
+      - worklex_network
+
+  # ------------------------------------------------------------------
+  # worklex_firewall — ModSecurity + Fail2Ban (WAF / OWASP CRS)
+  # ------------------------------------------------------------------
+  worklex_firewall:
+    image: owasp/modsecurity-crs:nginx
+    container_name: worklex_firewall
+    restart: unless-stopped
+    environment:
+      BACKEND: http://worklex_proxy:80
+      PARANOIA: "1"
+      ANOMALY_INBOUND: "5"
+      ANOMALY_OUTBOUND: "4"
+    ports:
+      - "${FIREWALL_PORT:-8081}:8080"
+    depends_on:
+      - worklex_proxy
+    networks:
+      - worklex_network
+
+  # ------------------------------------------------------------------
+  # worklex_monitor — Prometheus + Grafana (métricas, alertas)
+  # ------------------------------------------------------------------
+  worklex_monitor:
+    image: grafana/grafana:latest
+    container_name: worklex_monitor
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - worklex_mon_vol:/var/lib/grafana
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - worklex_prometheus
+    networks:
+      - worklex_network
+
+  # Prometheus (motor de métricas que alimenta a Grafana)
+  worklex_prometheus:
+    image: prom/prometheus:latest
+    container_name: worklex_prometheus
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - worklex_mon_vol:/prometheus
+    networks:
+      - worklex_network
+
+  # ------------------------------------------------------------------
+  # worklex_logs — Loki + Promtail/Fluentd (audit trail, USER_LOGS)
+  # ------------------------------------------------------------------
+  worklex_logs:
+    image: grafana/loki:latest
+    container_name: worklex_logs
+    restart: unless-stopped
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - worklex_logs_vol:/loki
+    networks:
+      - worklex_network
+
+  # Promtail recolecta los logs de los contenedores y los envía a Loki
+  worklex_promtail:
+    image: grafana/promtail:latest
+    container_name: worklex_promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/log/worklex:/var/log/worklex:ro
+    depends_on:
+      - worklex_logs
+    networks:
+      - worklex_network
+
+# =====================================================================
+#  Volúmenes nombrados (persistencia de datos)
+# =====================================================================
+volumes:
+  worklex_backend_vol:
+  worklex_frontend_vol:
+  worklex_db_vol:
+  worklex_redis_vol:
+  worklex_vault_vol:
+  worklex_media_vol:
+  worklex_mon_vol:
+  worklex_logs_vol:
+
+# =====================================================================
+#  Red compartida
+# =====================================================================
 networks:
   worklex_network:
-    external: true
+    name: worklex_network
+    driver: bridge
