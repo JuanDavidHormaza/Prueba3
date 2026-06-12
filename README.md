@@ -32,18 +32,14 @@ docker network create worklex_network
 
 ---
 
-### 3. Levantar la base de datos
 
-```bash
-docker-compose -p worklex_persistencia -f docker-compose.db.yml up -d
-```
 
 ---
 
-### 4. Levantar la aplicación
+### 3. Levantar contenedor
 
 ```bash
-docker-compose -p worklex_aplicacion up --build
+docker compose -f docker-compose.yml -f docker-compose.db.yml -f docker-compose.px.yml  -f  docker-compose.vault.yml  -f  docker-compose.firewall.yml -f docker-compose.auth.yml up  -d --bui
 ```
 
 ---

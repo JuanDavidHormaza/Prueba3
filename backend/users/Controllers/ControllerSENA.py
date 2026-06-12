@@ -19,10 +19,10 @@ ROLE_MAP_REVERSE = {
     'student': 'APRENDIZ',
 }
 
+
 STATUS_MAP = {
     'ACTIVO': 'active',
-    'INACTIVO': 'inactive',
-    'PENDIENTE': 'inactive',
+    'INACTIVO': 'inactive',    'PENDIENTE': 'inactive',
     'EN_FORMACION': 'active',
     'CANCELADO': 'inactive',
     'TRASLADADO': 'inactive',
@@ -409,271 +409,57 @@ class DictionaryController:
 
 # ─── TestResults ──────────────────────────────────────────────────────────────
 
-def calculate_level(score):
-
-    if score >= 91:
-        return "C2"
-
-    elif score >= 76:
-        return "C1"
-
-    elif score >= 56:
-        return "B2"
-
-    elif score >= 36:
-        return "B1"
-
-    elif score >= 21:
-        return "A2"
-
-    return "A1"
-
-
-def calculate_character(level):
-
-    characters = {
-        "A1": "Novato",
-        "A2": "Explorador",
-        "B1": "Guerrero",
-        "B2": "Caballero",
-        "C1": "Maestro",
-        "C2": "Leyenda"
-    }
-
-    return characters.get(level, "Novato")
-
-
-def build_feedback(score, level, character):
-
-    return (
-        f"Nivel obtenido: {level}. "
-        f"Personaje asignado: {character}. "
-        f"Puntaje final: {score}%."
-    )
-
-
 class TestResultController:
 
     @staticmethod
     def list_all(user_id=None):
-
-        queryset = TestResult.objects.select_related(
-            'user__person'
-        ).all()
-
+        queryset = TestResult.objects.select_related('user__person').all()
         if user_id:
-            queryset = queryset.filter(
-                user_id=user_id
-            )
+            queryset = queryset.filter(user_id=user_id)
 
         results = []
-
         for result in queryset:
-
             person = result.user.person
-
             results.append({
-
-                "id": str(result.id),
-
-                "userId": str(result.user.user_id),
-
-                "userName":
-                    f"{person.first_name} {person.last_name}",
-
-                "score": result.score,
-
-                "level": result.level,
-
-                "character": result.character,
-
-                "correctAnswers":
-                    result.correct_answers,
-
-                "totalQuestions":
-                    result.total_questions,
-
-                "feedback":
-                    result.feedback,
-
-                "duration":
-                    result.duration,
-
-                "process":
-                    result.process,
-
-                "completedAt":
-                    result.created_at.isoformat(),
-
-                "answers":
-                    result.process.get(
-                        "answers",
-                        []
-                    ) if result.process else []
-                    
+                'id': str(result.id),
+                'userId': str(result.user.user_id),
+                'userName': f"{person.first_name} {person.last_name}",
+                'score': result.score,
+                'level': result.level,
+                'correctAnswers': result.correct_answers,
+                'totalQuestions': result.total_questions,
+                'feedback': result.feedback,
+                'duration': result.duration,
+                'completedAt': result.created_at.isoformat() if result.created_at else None,
+                'answers': [],
             })
-
         return results
-    character = models.CharField(
-    max_length=50,
-    null=True,
-    blank=True
-)
 
-    process = models.JSONField(
-    null=True,
-    blank=True
-)
     @staticmethod
     def create(data):
-
         try:
+            user = User.objects.get(pk=data['user'])
+        except User.DoesNotExist:
+            return None, 'Usuario no encontrado'
 
-            user = User.objects.get(
-                user_id=data["user_id"]
-            )
-
-            answers = data["answers"]
-
-            speaking_score = data.get(
-                "speaking_score",
-                0
-            )
-
-            writing_score = data.get(
-                "writing_score",
-                0
-            )
-
-            correct = 0
-
-            total_weight = 0
-
-            obtained_weight = 0
-
-            for answer in answers:
-
-                difficulty = answer["difficulty"]
-
-                if difficulty == "Easy":
-                    weight = 1
-
-                elif difficulty == "Medium":
-                    weight = 2
-
-                else:
-                    weight = 3
-
-                total_weight += weight
-
-                if answer["is_correct"]:
-
-                    correct += 1
-
-                    obtained_weight += weight
-
-            quiz_score = round(
-                (
-                    obtained_weight /
-                    total_weight
-                ) * 100
-            )
-
-            final_score = round(
-
-                (
-                    quiz_score * 0.70
-                    +
-                    speaking_score * 0.15
-                    +
-                    writing_score * 0.15
-                )
-
-            )
-
-            level = calculate_level(
-                final_score
-            )
-
-            character = calculate_character(
-                level
-            )
-
-            feedback = build_feedback(
-                final_score,
-                level,
-                character
-            )
-
-            process = {
-
-                "quiz_score":
-                    quiz_score,
-
-                "speaking_score":
-                    speaking_score,
-
-                "writing_score":
-                    writing_score,
-
-                "final_score":
-                    final_score,
-
-                "level":
-                    level,
-
-                "character":
-                    character,
-
-                "answers":
-                    answers
-            }
-
-            result = TestResult.objects.create(
-
-                user=user,
-
-                score=final_score,
-
-                level=level,
-
-                character=character,
-
-                feedback=feedback,
-
-                correct_answers=correct,
-
-                total_questions=len(
-                    answers
-                ),
-
-                process=process
-            )
-
-            return result, None
-
-        except Exception as e:
-
-            return None, str(e)
+        result = TestResult.objects.create(
+            user=user,
+            score=data['score'],
+            level=data['level'],
+            correct_answers=data['correct_answers'],
+            total_questions=data['total_questions'],
+            feedback=data.get('feedback'),
+            duration=data.get('duration'),
+        )
+        return result, None
 
     @staticmethod
     def add_feedback(result_id, feedback):
-
         try:
-
-            result = TestResult.objects.get(
-                pk=result_id
-            )
-
-            result.feedback = feedback
-
-            result.save()
-
-            return result, None
-
+            result = TestResult.objects.get(pk=result_id)
         except TestResult.DoesNotExist:
+            return None, 'Resultado no encontrado'
 
-            return (
-                None,
-                "Resultado no encontrado"
-            )
+        result.feedback = feedback
+        result.save()
+        return result, None

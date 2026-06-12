@@ -242,7 +242,7 @@ export function ResultsPage() {
                 }`}
                 style={{ 
                   backgroundColor: `${item.color}10`,
-                  ringColor: item.active ? item.color : 'transparent'
+                   ringColor: item.active ? item.color : 'transparent'
                 }}
               >
                 <span 
