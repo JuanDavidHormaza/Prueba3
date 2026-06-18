@@ -1,6 +1,6 @@
 services:
 
-  backend:
+  worklex_backend:
 
     build:
       context: ./backend
@@ -13,8 +13,8 @@ services:
     env_file:
       - .env
 
-    ports:
-      - "${DJANGO_PORT}:8000"
+    expose:
+      - "8000"
 
     volumes:
       - ./backend:/app
@@ -24,10 +24,11 @@ services:
     #-------------------------------------------------------------------------
     # Ajuste para evitar error por permisos con chmod
     #-------------------------------------------------------------------------
+    #       python manage.py runserver 0.0.0.0:8000 &&
+
     command: >
       sh -c "
       python manage.py migrate --fake-initial &&
-      python manage.py runserver 0.0.0.0:8000 &&
       gunicorn config.wsgi:application --bind 0.0.0.0:8000
       "
 
@@ -39,12 +40,13 @@ services:
     #  gunicorn config.wsgi:application --bind 0.0.0.0:8000
     #  "
 
-    depends_on:
-      - frontend
+    #depends_on:
+    #  - frontend
 
     # Permite que otros contenedores esperen a que PostgreSQL esté listo.
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/admin/login/"]
+      #test: ["CMD", "curl", "-f", "http://localhost:8000/admin/login/"]
+      test: ["CMD","curl","-f","http://localhost:5173"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -54,7 +56,7 @@ services:
 
 
 
-  frontend:
+  worklex_frontend:
 
     build:
       context: ./frontend
@@ -64,12 +66,12 @@ services:
 
     restart: unless-stopped
 
-    ports:
-      - "${VITE_PORT}:5173"
+    expose:
+      - "5173"
 
     volumes:
       - ./frontend:/app
-      - /app/node_modules
+      - frontend_node_modules:/app/node_modules
 
     working_dir: /app
 
@@ -77,7 +79,8 @@ services:
 
     # Permite que otros contenedores esperen a que PostgreSQL esté listo.
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      #test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      test: ["CMD","curl","-f","http://localhost:8000/api/health/"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -85,6 +88,24 @@ services:
     networks:
       - worklex_network
 
+  worklex_proxy:
+
+    image: owasp/modsecurity-crs:nginx
+
+    container_name: worklex_proxy
+
+    depends_on:
+      - worklex_backend
+      - worklex_frontend
+
+    networks:
+      - worklex_network
+
+
 networks:
   worklex_network:
     external: true
+    #driver: bridge
+
+volumes:
+  frontend_node_modules:
