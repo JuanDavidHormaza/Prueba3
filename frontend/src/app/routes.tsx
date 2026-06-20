@@ -1,6 +1,5 @@
 // frontend/src/router.tsx
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import { useAuth } from "./context/AuthContext";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -10,25 +9,69 @@ import { ResultsPage } from "./pages/ResultsPage";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { TeacherDashboard } from "./pages/TeacherDashboard";
 import { MediaPage } from "./pages/MediaPage";
-import { SuperAdminPage } from "./pages/SuperAdminPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export const router = createBrowserRouter([
   { path: "/", Component: LandingPage },
   { path: "/login", Component: LoginPage },
   { path: "/register", Component: RegisterPage },
-  { path: "/dashboard", Component: DashboardPage },
-  { path: "/quiz", Component: QuizPage },
-  { path: "/results", Component: ResultsPage },
-  { path: "/admin", Component: AdminDashboard },
-  { path: "/teacher", Component: TeacherDashboard },
-  { path: "/media", Component: MediaPage },
+
+  // Estudiante
   {
-    path: "/superadmin",
+    path: "/dashboard",
     element: (
-      <ProtectedRoute allowedRoles={["superadmin"]}> 
-        <SuperAdminPage />
+      <ProtectedRoute allowedRoles={["student"]}>
+        <DashboardPage />
       </ProtectedRoute>
     ),
-},
+  },
+  {
+    path: "/quiz",
+    element: (
+      <ProtectedRoute allowedRoles={["student"]}>
+        <QuizPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/results",
+    element: (
+      <ProtectedRoute allowedRoles={["student"]}>
+        <ResultsPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  // Profesor
+  {
+    path: "/teacher",
+    element: (
+      <ProtectedRoute allowedRoles={["teacher"]}>
+        <TeacherDashboard />
+      </ProtectedRoute>
+    ),
+  },
+
+  // Admin y SuperAdmin
+  {
+    path: "/admin",
+    element: (
+      <ProtectedRoute allowedRoles={["admin", "superadmin"]}>
+        <AdminDashboard />
+      </ProtectedRoute>
+    ),
+  },
+
+  // Compartida autenticados
+  {
+    path: "/media",
+    element: (
+      <ProtectedRoute allowedRoles={["student", "teacher", "admin", "superadmin"]}>
+        <MediaPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  // Ruta catch-all
+  { path: "*", element: <Navigate to="/login" replace /> },
 ]);

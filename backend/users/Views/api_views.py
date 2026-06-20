@@ -83,6 +83,44 @@ class PersonViewSet(viewsets.ViewSet):
 class UserViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
+
+    def partial_update(self, request, pk=None):
+        """
+        Actualiza parcialmente los datos del usuario (nombre, email, teléfono, etc.)
+        Se asume que los datos se envían en request.data con los campos:
+        - name (opcional) → se divide en first_name y last_name
+        - email (opcional)
+        - phone_num (opcional)
+        """
+        # Obtener el usuario y su persona asociada
+        user, error = UserController.get_by_id(pk)
+        if error:
+            return Response({'error': error}, status=status.HTTP_404_NOT_FOUND)
+
+        person = user.person  # Asumiendo que la relación existe
+
+        # Preparar datos para actualizar la persona
+        person_data = {}
+        if 'name' in request.data:
+            # Divide el nombre completo en first_name y last_name (puedes ajustar la lógica)
+            full_name = request.data['name'].strip()
+            parts = full_name.split(' ', 1)
+            person_data['first_name'] = parts[0]
+            person_data['last_name'] = parts[1] if len(parts) > 1 else ''
+        if 'email' in request.data:
+            person_data['email'] = request.data['email']
+        if 'phone_num' in request.data:
+            person_data['phone_num'] = request.data['phone_num']
+
+        # Llamar al controlador de Persona para actualizar
+        updated_person, error = PersonController.update(person.person_id, person_data)
+        if error:
+            return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Devolver los datos actualizados del usuario (puedes usar el mismo builder que en retrieve)
+        return Response(_build_user_response(user, updated_person))
+    
+    
     def list(self, request):
         return Response(UserController.list_all(
             role_filter=request.query_params.get('role')
