@@ -1,7 +1,7 @@
 from django.contrib.auth.hashers import check_password, make_password
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from ..Models.modelsSENA import Person, User, Subject, DigitalDictionary, TestResult
+from ..Models.modelsSENA import Person, User, Subject, DigitalDictionary, TestResult, Ranking
 
 
 # ─── Mapas de roles y estados ────────────────────────────────────────────────
@@ -432,6 +432,28 @@ class DictionaryController:
 
 # ─── TestResults ──────────────────────────────────────────────────────────────
 
+def _derive_level_from_score(score):
+    """Deriva el nivel CEFR alcanzado a partir del puntaje total (0-100)."""
+    if score >= 85:
+        return 'B2'
+    if score >= 70:
+        return 'B1'
+    if score >= 50:
+        return 'A2'
+    return 'A1'
+
+
+def _derive_character_from_score(score):
+    """Asigna un 'character' descriptivo según el desempeño."""
+    if score >= 85:
+        return 'Experto'
+    if score >= 70:
+        return 'Avanzado'
+    if score >= 50:
+        return 'Intermedio'
+    return 'Principiante'
+
+
 class TestResultController:
 
     @staticmethod
@@ -449,8 +471,12 @@ class TestResultController:
                 'userName': f"{person.first_name} {person.last_name}",
                 'score': result.score,
                 'level': result.level,
+                'character': result.character,
                 'correctAnswers': result.correct_answers,
                 'totalQuestions': result.total_questions,
+                'speakingScore': result.speaking_score,
+                'writingScore': result.writing_score,
+                'levelScores': result.level_scores,
                 'feedback': result.feedback,
                 'duration': result.duration,
                 'completedAt': result.created_at.isoformat() if result.created_at else None,
@@ -460,20 +486,46 @@ class TestResultController:
 
     @staticmethod
     def create(data):
+        # El frontend envía user_id; aceptamos también 'user' por compatibilidad.
+        user_id = data.get('user_id', data.get('user'))
+        if user_id is None:
+            return None, 'Usuario no encontrado'
+
         try:
-            user = User.objects.get(pk=data['user'])
+            user = User.objects.get(pk=user_id)
         except User.DoesNotExist:
             return None, 'Usuario no encontrado'
 
+        correct_answers = int(data.get('correct_answers', 0))
+        total_questions = int(data.get('total_questions', 0)) or 0
+
+        # El puntaje se calcula si no viene explícito en la petición.
+        score = data.get('score')
+        if score is None:
+            score = round((correct_answers / total_questions) * 100) if total_questions else 0
+        score = int(score)
+
+        level = data.get('level') or _derive_level_from_score(score)
+        character = data.get('character') or _derive_character_from_score(score)
+
         result = TestResult.objects.create(
             user=user,
-            score=data['score'],
-            level=data['level'],
-            correct_answers=data['correct_answers'],
-            total_questions=data['total_questions'],
+            score=score,
+            level=level,
+            character=character,
+            correct_answers=correct_answers,
+            total_questions=total_questions,
+            speaking_score=int(data.get('speaking_score', 0) or 0),
+            writing_score=int(data.get('writing_score', 0) or 0),
+            level_scores=data.get('level_scores'),
+            process=data.get('process'),
             feedback=data.get('feedback'),
             duration=data.get('duration'),
         )
+
+        # Guarda / actualiza el ranking (leaderboard) del usuario.
+        RankingController.update_from_result(result)
+
         return result, None
 
     @staticmethod
@@ -486,3 +538,74 @@ class TestResultController:
         result.feedback = feedback
         result.save()
         return result, None
+
+
+# ─── Ranking (Leaderboard) ─────────────────────────────────────────────────────
+
+class RankingController:
+
+    @staticmethod
+    def update_from_result(result):
+        """
+        Crea o actualiza la fila de ranking del usuario.
+        Solo sobreescribe el mejor resultado si el nuevo puntaje es mayor
+        o igual al registrado previamente.
+        """
+        ranking, created = Ranking.objects.get_or_create(
+            user=result.user,
+            defaults={
+                'best_result': result,
+                'best_score': result.score,
+                'level': result.level,
+                'character': result.character,
+                'correct_answers': result.correct_answers,
+                'total_questions': result.total_questions,
+                'speaking_score': result.speaking_score,
+                'writing_score': result.writing_score,
+                'attempts': 1,
+            },
+        )
+
+        if not created:
+            ranking.attempts += 1
+            if result.score >= ranking.best_score:
+                ranking.best_result = result
+                ranking.best_score = result.score
+                ranking.level = result.level
+                ranking.character = result.character
+                ranking.correct_answers = result.correct_answers
+                ranking.total_questions = result.total_questions
+                ranking.speaking_score = result.speaking_score
+                ranking.writing_score = result.writing_score
+            ranking.save()
+
+        return ranking
+
+    @staticmethod
+    def list_all():
+        """Devuelve el leaderboard ordenado por mejor puntaje."""
+        queryset = (
+            Ranking.objects
+            .select_related('user__person', 'best_result')
+            .order_by('-best_score', '-updated_at')
+        )
+
+        leaderboard = []
+        for position, ranking in enumerate(queryset, start=1):
+            person = ranking.user.person
+            leaderboard.append({
+                'position': position,
+                'userId': str(ranking.user.user_id),
+                'userName': f"{person.first_name} {person.last_name}",
+                'bestScore': ranking.best_score,
+                'level': ranking.level,
+                'character': ranking.character,
+                'correctAnswers': ranking.correct_answers,
+                'totalQuestions': ranking.total_questions,
+                'speakingScore': ranking.speaking_score,
+                'writingScore': ranking.writing_score,
+                'attempts': ranking.attempts,
+                'bestResultId': str(ranking.best_result.id) if ranking.best_result else None,
+                'updatedAt': ranking.updated_at.isoformat() if ranking.updated_at else None,
+            })
+        return leaderboard

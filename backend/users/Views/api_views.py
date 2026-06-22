@@ -6,7 +6,7 @@ from rest_framework.decorators import action
 from ..Controllers.ControllerSENA import (
     AuthController, PersonController, UserController,
     SubjectController, DictionaryController, TestResultController,
-    _build_user_response,
+    RankingController, _build_user_response,
 )
 from ..serializers import (
     LoginSerializer, RegisterSerializer, PersonSerializer,
@@ -245,3 +245,10 @@ class TestResultViewSet(viewsets.ViewSet):
         if error:
             return Response({'error': error}, status=status.HTTP_404_NOT_FOUND)
         return Response({'feedback': result.feedback})
+
+
+class RankingViewSet(viewsets.ViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def list(self, request):
+        return Response(RankingController.list_all())

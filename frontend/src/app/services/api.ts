@@ -383,6 +383,16 @@ export async function addFeedback(resultId: string, feedback: string): Promise<{
   return handleResponse<{ feedback: string }>(response);
 }
 
+// ─── Ranking / Leaderboard API ───────────────────────────────────────────────
+
+export async function getRanking(): Promise<any[]> {
+  const response = await fetch(`${API_BASE}/ranking/`, {
+    headers: getAuthHeaders(),
+  });
+
+  return handleResponse<any[]>(response);
+}
+
 // ─── Export para compatibilidad ──────────────────────────────────────────────
 
 export const api = {
@@ -404,6 +414,7 @@ export const api = {
   getTestResults,
   createTestResult,
   addFeedback,
+  getRanking,
   post,
 };
 

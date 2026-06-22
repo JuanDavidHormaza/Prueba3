@@ -5,7 +5,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .Views.api_views import (
     LoginAPIView, RegisterAPIView, MeAPIView,
     PersonViewSet, UserViewSet, SubjectViewSet,
-    DigitalDictionaryViewSet, TestResultViewSet
+    DigitalDictionaryViewSet, TestResultViewSet, RankingViewSet
 )
 
 # Router para los ViewSets
@@ -15,6 +15,7 @@ router.register(r'users', UserViewSet, basename='user')
 router.register(r'subjects', SubjectViewSet, basename='subject')
 router.register(r'dictionary', DigitalDictionaryViewSet, basename='dictionary')
 router.register(r'results', TestResultViewSet, basename='result')
+router.register(r'ranking', RankingViewSet, basename='ranking')
 
 urlpatterns = [
     # Rutas de autenticacion

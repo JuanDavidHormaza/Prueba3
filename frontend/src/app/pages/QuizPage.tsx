@@ -58,6 +58,12 @@ export function QuizPage() {
   const scoreRef = useRef(score);
   const userAnswersRef = useRef(userAnswers);
   const quizStartedAtRef = useRef(Date.now());
+  // Desglose de puntaje por cada uno de los 4 quizzes (A1, A2, B1, B2)
+  const levelScoresRef = useRef<
+    Record<string, { correct: number; total: number; score: number }>
+  >({});
+  // Puntaje acumulado al iniciar el quiz actual, para calcular el delta por nivel
+  const levelBaselineRef = useRef(0);
 
 
   const cleanupRecording = () => {
@@ -316,6 +322,16 @@ export function QuizPage() {
       return;
     }
 
+    // El quiz del nivel actual terminó: registramos su puntaje individual.
+    const levelCorrect = scoreRef.current - levelBaselineRef.current;
+    const levelTotal = currentQuestions.length;
+    levelScoresRef.current[currentLevel] = {
+      correct: levelCorrect,
+      total: levelTotal,
+      score: levelTotal ? Math.round((levelCorrect / levelTotal) * 100) : 0,
+    };
+    levelBaselineRef.current = scoreRef.current;
+
     if (currentLevel !== "B2") {
       setShowLevelModal(true);
       return;
@@ -335,6 +351,7 @@ export function QuizPage() {
     try {
       await api.createTestResult({
         user_id: Number(localStorage.getItem("userId")),
+        score: finalScore,
         correct_answers: correctAnswerCount,
         total_questions: totalQuestions,
         answers: completedAnswers.map((answer) => ({
@@ -343,6 +360,7 @@ export function QuizPage() {
           is_correct: answer.isCorrect,
         })),
         process: { userAnswers: completedAnswers },
+        level_scores: levelScoresRef.current,
         speaking_score: completedAnswers.filter((item) => item.audioUrl).length,
         writing_score: completedAnswers.filter((item) => item.writingAnswer).length,
         duration,

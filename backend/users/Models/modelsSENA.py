@@ -90,13 +90,44 @@ class DigitalDictionary(models.Model):
 
 
 class Ranking(models.Model):
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
-    word_id = models.CharField(max_length=50)
-    level = models.CharField(max_length=50)
-    value = models.CharField(max_length=50)
+    """
+    Tabla de ranking (leaderboard): una fila por usuario con su mejor
+    resultado obtenido en las pruebas (4 quizzes: A1, A2, B1, B2).
+    Se actualiza cada vez que el usuario completa una prueba con un
+    puntaje mayor al que tenía registrado.
+    """
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='ranking',
+        null=True,
+        blank=True
+    )
+    best_result = models.ForeignKey(
+        'TestResult',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+'
+    )
+
+    best_score = models.IntegerField(default=0)
+    level = models.CharField(max_length=10, null=True, blank=True)
+    character = models.CharField(max_length=50, null=True, blank=True)
+
+    correct_answers = models.IntegerField(default=0)
+    total_questions = models.IntegerField(default=0)
+    speaking_score = models.IntegerField(default=0)
+    writing_score = models.IntegerField(default=0)
+
+    attempts = models.IntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('subject', 'word_id')
+        ordering = ['-best_score', '-updated_at']
+
+    def __str__(self):
+        return f"{self.user.person.first_name} - {self.best_score}%"
 
 
 class Post(models.Model):
@@ -147,6 +178,13 @@ class TestResult(models.Model):
 
     correct_answers = models.IntegerField()
     total_questions = models.IntegerField()
+
+    # Puntajes específicos de las pruebas de producción
+    speaking_score = models.IntegerField(default=0)
+    writing_score = models.IntegerField(default=0)
+
+    # Desglose por cada uno de los 4 quizzes (A1, A2, B1, B2)
+    level_scores = models.JSONField(null=True, blank=True)
 
     feedback = models.TextField(null=True, blank=True)
     duration = models.CharField(max_length=20, null=True, blank=True)
